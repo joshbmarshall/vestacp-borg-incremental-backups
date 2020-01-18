@@ -69,16 +69,12 @@ for USER_DIR in $HOME_DIR/* ; do
     USER_REPO=$REPO_USERS_DIR/$USER
 
     # Check if repo was initialized, if its not we perform borg init
-    if ! [ -d "$USER_REPO/data" ]; then
-      echo "-- No repo found. Initializing new borg repository $USER_REPO"
-      mkdir -p $USER_REPO
-      borg init $OPTIONS_INIT $USER_REPO
-    fi
+    $CURRENT_DIR/inc/borg_init.sh $USER_REPO
 
     echo "-- Creating new backup archive $USER_REPO::$ARCHIVE"
-    borg create $OPTIONS_CREATE $USER_REPO::$ARCHIVE $USER_DIR --exclude-from=$EXCLUDE
+    $CURRENT_DIR/inc/borg_create.sh $USER_REPO $ARCHIVE "$USER_DIR --exclude-from=$EXCLUDE"
     echo "-- Cleaning old backup archives"
-    borg prune $OPTIONS_PRUNE $USER_REPO
+    $CURRENT_DIR/inc/borg_prune.sh $USER_REPO
 
     let COUNT++
     echo
@@ -97,39 +93,27 @@ echo
 echo "$(date +'%F %T') #################### SERVER LEVEL BACKUPS #####################"
 
 echo "$(date +'%F %T') ########## Executing scripts backup: $SCRIPTS_DIR ##########"
-if ! [ -d "$REPO_SCRIPTS/data" ]; then
-  echo "-- No repo found. Initializing new borg repository $REPO_SCRIPTS"
-  mkdir -p $REPO_SCRIPTS
-  borg init $OPTIONS_INIT $REPO_SCRIPTS
-fi
+$CURRENT_DIR/inc/borg_init.sh $REPO_SCRIPTS
 echo "-- Creating new backup archive $REPO_SCRIPTS::$ARCHIVE"
-borg create $OPTIONS_CREATE $REPO_SCRIPTS::$ARCHIVE $SCRIPTS_DIR
+$CURRENT_DIR/inc/borg_create.sh $REPO_SCRIPTS $ARCHIVE $SCRIPTS_DIR
 echo "-- Cleaning old backup archives"
-borg prune $OPTIONS_PRUNE $REPO_SCRIPTS
+$CURRENT_DIR/inc/borg_prune.sh $REPO_SCRIPTS
 echo
 
 echo "$(date +'%F %T') ########## Executing server config backup: $ETC_DIR ##########"
-if ! [ -d "$REPO_ETC/data" ]; then
-  echo "-- No repo found. Initializing new borg repository $REPO_ETC"
-  mkdir -p $REPO_ETC
-  borg init $OPTIONS_INIT $REPO_ETC
-fi
+$CURRENT_DIR/inc/borg_init.sh $REPO_ETC
 echo "-- Creating new backup archive $REPO_ETC::$ARCHIVE"
-borg create $OPTIONS_CREATE $REPO_ETC::$ARCHIVE $ETC_DIR
+$CURRENT_DIR/inc/borg_create.sh $REPO_ETC $ARCHIVE $ETC_DIR
 echo "-- Cleaning old backup archives"
-borg prune $OPTIONS_PRUNE $REPO_ETC
+$CURRENT_DIR/inc/borg_prune.sh $REPO_ETC
 echo
 
 echo "$(date +'%F %T') ########## Executing Vesta dir backup: $VESTA_DIR ##########"
-if ! [ -d "$REPO_VESTA/data" ]; then
-  echo "-- No repo found. Initializing new borg repository $REPO_VESTA"
-  mkdir -p $REPO_VESTA
-  borg init $OPTIONS_INIT $REPO_VESTA
-fi
+$CURRENT_DIR/inc/borg_init.sh $REPO_VESTA
 echo "-- Creating new backup archive $REPO_VESTA::$ARCHIVE"
-borg create $OPTIONS_CREATE $REPO_VESTA::$ARCHIVE $VESTA_DIR
+$CURRENT_DIR/inc/borg_create.sh $REPO_VESTA $ARCHIVE $VESTA_DIR
 echo "-- Cleaning old backup archives"
-borg prune $OPTIONS_PRUNE $REPO_VESTA
+$CURRENT_DIR/inc/borg_prune.sh $REPO_VESTA
 echo
 
 if [[ ! -z "$REMOTE_BACKUP_SERVER" && ! -z "$REMOTE_BACKUP_SERVER_DIR" ]]; then

@@ -48,14 +48,9 @@ if [ ! -d "$HOME_DIR/$USER/web/$WEB" ]; then
   exit 1
 fi
 
-if [ ! -d "$USER_REPO/data" ]; then
-  echo "!!!!! User $USER has no backup repository or no backup has been executed yet. Aborting..."
-  exit 1
-fi
-
-if ! borg list $USER_REPO | grep -q $TIME; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO | grep -q $TIME; then
   echo "!!!!! Backup archive $TIME not found, the following are available:"
-  borg list $USER_REPO
+  $CURRENT_DIR/inc/borg_list.sh $USER_REPO
   echo "Usage example:"
   echo $USAGE
   exit 1
@@ -78,14 +73,14 @@ fi
 WEB_DIR=$HOME_DIR/$USER/web/$WEB/$PUBLIC_HTML_DIR_NAME
 BACKUP_WEB_DIR="${WEB_DIR:1}"
 
-if ! borg list $USER_REPO::$TIME | grep -q $BACKUP_WEB_DIR; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO::$TIME | grep -q $BACKUP_WEB_DIR; then
   echo "!!!!! $WEB is not present in backup archive $TIME. Aborting..."
   exit 1
 fi
 echo "-- Restoring web domain files from backup $USER_REPO::$TIME to $WEB_DIR"
 cd /
 rm -fr $BACKUP_WEB_DIR
-borg extract --list $USER_REPO::$TIME $BACKUP_WEB_DIR
+$CURRENT_DIR/inc/borg_extract.sh $USER_REPO $TIME $BACKUP_WEB_DIR
 
 echo "-- Fixing permissions"
 chown -R $USER:$USER $WEB_DIR/

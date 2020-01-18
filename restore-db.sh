@@ -52,19 +52,13 @@ if [[ $(v-list-databases $USER | grep -w '\(my\|pg\)sql' | cut -d " " -f1 | grep
   exit 1
 fi
 
-if [ ! -d "$USER_REPO/data" ]; then
-  echo "!!!!! User $USER has no backup repository or no backup has been executed yet. Aborting..."
-  exit 1
-fi
-
-if ! borg list $USER_REPO | grep -q "$DB-$TIME"; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO | grep -q "$DB-$TIME"; then
   echo "!!!!! Backup archive $TIME not found, the following are available:"
-  borg list $USER_REPO | grep $DB
+  $CURRENT_DIR/inc/borg_list.sh $USER_REPO | grep $DB
   echo "Usage example:"
   echo $USAGE
   exit 1
 fi
-
 
 echo "########## BACKUP ARCHIVE $TIME FOUND, PROCEEDING WITH DATABASE RESTORE ##########"
 echo
@@ -87,8 +81,8 @@ if [[ $(v-list-databases $USER | grep -w mysql | cut -d " " -f1 | grep "$DB") ==
   echo "-- Creating database $DB"
   mysql -e "CREATE DATABASE IF NOT EXISTS $DB"
 
-  echo "-- Importing $DB_FILE to $DB database"
-  borg extract --stdout $USER_REPO::$DB-$TIME | mysql $DB
+  echo "-- Importing $TIME to $DB database"
+  $CURRENT_DIR/inc/borg_extract_stdout.sh $USER_REPO "$DB-$TIME" | mysql $DB
 fi
 if [[ $(v-list-databases $USER | grep -w pgsql | cut -d " " -f1 | grep "$DB") == "$DB" ]]; then
   echo "-- Removing database $DB"
@@ -97,8 +91,8 @@ if [[ $(v-list-databases $USER | grep -w pgsql | cut -d " " -f1 | grep "$DB") ==
   echo "-- Creating database $DB"
   echo "CREATE DATABASE $DB" | psql -U postgres
 
-  echo "-- Importing $DB_FILE to $DB database"
-  borg extract --stdout $USER_REPO::$DB-$TIME | psql -U postgres $DB
+  echo "-- Importing $TIME to $DB database"
+  $CURRENT_DIR/inc/borg_extract_stdout.sh $USER_REPO "$DB-$TIME" | psql -U postgres $DB
 fi
 
 echo

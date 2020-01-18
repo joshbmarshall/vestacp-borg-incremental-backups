@@ -25,31 +25,19 @@ if [[ -z $1 || -z $2 ]]; then
   exit 1
 fi
 
-# Check if user repo exist
-if [ ! -d "$USER_REPO/data" ]; then
-  echo "!!!!! User $USER has no backup repository or no backup has been executed yet. Aborting..."
-  exit 1
-fi
-
 # Check if backup archive date exist in user repo
-if ! borg list $USER_REPO | grep -q $TIME; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO | grep -q $TIME; then
   echo "!!!!! Backup archive $TIME not found, the following are available:"
-  borg list $USER_REPO
+  $CURRENT_DIR/inc/borg_list.sh $USER_REPO
   echo "Usage example:"
   echo $USAGE
   exit 1
 fi
 
-# Check if vesta repo exist
-if [ ! -d "$REPO_VESTA/data" ]; then
-  echo "!!!!! Vesta has no backup repository or no backup has been executed yet. Aborting..."
-  exit 1
-fi
-
 # Check if backup archive date exist in vesta repo
-if ! borg list $REPO_VESTA | grep -q $TIME; then
+if ! $CURRENT_DIR/inc/borg_list.sh $REPO_VESTA | grep -q $TIME; then
   echo "!!!!! Backup archive $TIME not found in Vesta repo, the following are available:"
-  borg list $REPO_VESTA
+  $CURRENT_DIR/inc/borg_list.sh $REPO_VESTA
   echo "Usage example:"
   echo $USAGE
   exit 1
@@ -75,24 +63,24 @@ BACKUP_VESTA_USER_DIR="${VESTA_USER_DIR:1}"
 
 cd /
 
-if ! borg list $REPO_VESTA::$TIME | grep -q $BACKUP_VESTA_USER_DIR; then
+if ! $CURRENT_DIR/inc/borg_list.sh $REPO_VESTA::$TIME | grep -q $BACKUP_VESTA_USER_DIR; then
   echo "!!!!! Vesta user config files for $USER are not present in backup archive $TIME. Aborting..."
   exit 1
 fi
 echo "----- Restoring Vesta user files from backup $REPO_VESTA::$TIME to $VESTA_USER_DIR"
 rm -fr $BACKUP_VESTA_USER_DIR
-borg extract --list $REPO_VESTA::$TIME $BACKUP_VESTA_USER_DIR
+$CURRENT_DIR/inc/borg_extract.sh $REPO_VESTA $TIME $BACKUP_VESTA_USER_DIR
 
 echo "-- Vesta rebuild user"
 v-rebuild-user $USER
 
-if ! borg list $USER_REPO::$TIME | grep -q $BACKUP_USER_DIR; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO::$TIME | grep -q $BACKUP_USER_DIR; then
   echo "!!!!! User $USER files are not present in backup archive $TIME. Aborting..."
   exit 1
 fi
 echo "----- Restoring user files from backup $USER_REPO::$TIME"
 rm -fr $BACKUP_USER_DIR
-borg extract --list $USER_REPO::$TIME $BACKUP_USER_DIR
+$CURRENT_DIR/inc/borg_extract.sh $USER_REPO $TIME $BACKUP_USER_DIR
 
 echo "-- Fixing web permissions"
 chown -R $USER:$USER $USER_DIR/web

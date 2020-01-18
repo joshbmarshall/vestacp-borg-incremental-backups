@@ -48,14 +48,9 @@ if [ ! -d "$HOME_DIR/$USER/mail/$DOMAIN" ]; then
   exit 1
 fi
 
-if [ ! -d "$USER_REPO/data" ]; then
-  echo "!!!!! User $USER has no backup repository or no backup has been executed yet. Aborting..."
-  exit 1
-fi
-
-if ! borg list $USER_REPO | grep -q $TIME; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO | grep -q $TIME; then
   echo "!!!!! Backup archive $TIME not found, the following are available:"
-  borg list $USER_REPO
+  $CURRENT_DIR/inc/borg_list.sh $USER_REPO
   echo "Usage example:"
   echo $USAGE
   exit 1
@@ -78,14 +73,14 @@ fi
 DOMAIN_DIR=$HOME_DIR/$USER/mail/$DOMAIN
 BACKUP_DOMAIN_DIR="${DOMAIN_DIR:1}" # Paths inside borg repo are relative
 
-if ! borg list $USER_REPO::$TIME | grep -q $BACKUP_DOMAIN_DIR; then
+if ! $CURRENT_DIR/inc/borg_list.sh $USER_REPO::$TIME | grep -q $BACKUP_DOMAIN_DIR; then
   echo "!!!!! $DOMAIN mail domain is not present in backup archive $TIME. Aborting..."
   exit 1
 fi
 echo "-- Restoring mail domain files from backup $USER_REPO::$TIME to $BACKUP_DOMAIN_DIR"
 cd /
 rm -fr $BACKUP_DOMAIN_DIR
-borg extract --list $USER_REPO::$TIME $BACKUP_DOMAIN_DIR
+$CURRENT_DIR/inc/borg_extract.sh $USER_REPO $TIME $BACKUP_DOMAIN_DIR
 
 echo "-- Fixing permissions"
 chown -R $USER:mail $DOMAIN_DIR/

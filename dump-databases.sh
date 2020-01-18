@@ -13,29 +13,23 @@ echo "$(date +'%F %T') #################### DUMP MYSQL DATABASES TO CORRESPONDIN
 while read USER ; do
   USER_REPO=$REPO_DB_DIR/$USER
   # Check if repo was initialized, if its not we perform borg init
-  if ! [ -d "$USER_REPO/data" ]; then
-    echo "-- No repo found. Initializing new borg repository $USER_REPO"
-    mkdir -p $USER_REPO
-    borg init $OPTIONS_INIT $USER_REPO
-  fi
+  $CURRENT_DIR/inc/borg_init.sh $USER_REPO
   # Get MySQL databases
   while read DATABASE ; do
     ARCHIVE="$DATABASE-$TIME"
     echo "-- Creating new backup archive $USER_REPO::$ARCHIVE"
-    mysqldump $DATABASE --opt --routines --skip-comments | borg create $OPTIONS_CREATE $USER_REPO::$ARCHIVE -
-    borg prune $OPTIONS_PRUNE $USER_REPO --prefix ${DATABASE}'-'
+    mysqldump $DATABASE --opt --routines --skip-comments | $CURRENT_DIR/inc/borg_create.sh $USER_REPO $ARCHIVE -
+    $CURRENT_DIR/inc/borg_prune.sh $USER_REPO "--prefix ${DATABASE}'-'"
     let DB_COUNT++
   done < <(v-list-databases $USER | grep -w mysql | cut -d " " -f1)
   # Get PostgreSQL databases
   while read DATABASE ; do
     ARCHIVE="$DATABASE-$TIME"
     echo "-- Creating new backup archive $USER_REPO::$ARCHIVE"
-    pg_dump -U postgres $DATABASE | borg create $OPTIONS_CREATE $USER_REPO::$ARCHIVE -
-    borg prune $OPTIONS_PRUNE $USER_REPO --prefix ${DATABASE}'-'
+    pg_dump -U postgres $DATABASE | $CURRENT_DIR/inc/borg_create.sh $USER_REPO $ARCHIVE -
+    $CURRENT_DIR/inc/borg_prune.sh $USER_REPO "--prefix ${DATABASE}'-'"
     let DB_COUNT++
   done < <(v-list-databases $USER | grep -w pgsql | cut -d " " -f1)
-
-  echo "-- Cleaning old backup archives"
 done < <(v-list-users | cut -d " " -f1 | awk '{if(NR>2)print}')
 
 echo "$(date +'%F %T') ########## $DB_COUNT DATABASES SAVED ##########"

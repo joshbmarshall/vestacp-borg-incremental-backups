@@ -18,7 +18,7 @@ USER_REPOS_TO_ARCHIVE=()
 TEMP_DIR=$CURRENT_DIR/tmp
 mkdir -p $TEMP_DIR
 
-for USER_REPO in $REPO_USERS_DIR/* ; do
+for USER_REPO in $($CURRENT_DIR/inc/borg_repo_list.sh $REPO_USERS_DIR); do
   USER=$(basename $USER_REPO)
   if [ ! -d "$HOME_DIR/$USER" ]
   then
@@ -57,7 +57,7 @@ do
 
   USER_REPO=$REPO_USERS_DIR/$USER
   USER_DB_REPO=$REPO_DB_DIR/$USER
-  LAST_BACKUP_ARCHIVE=$(borg list $USER_REPO | cut -d " " -f1 | awk 'END{print}')
+  LAST_BACKUP_ARCHIVE=$($CURRENT_DIR/inc/borg_list.sh $USER_REPO | cut -d " " -f1 | awk 'END{print}')
 
   # Set dir paths
   ARCHIVE_USER_DIR=$ARCHIVE_DIR/$USER
@@ -105,7 +105,7 @@ do
   cd $TEMP_DIR
 
   echo "-- Extracting Vesta user $USER files from backup $REPO_VESTA::$LAST_BACKUP_ARCHIVE to temp dir"
-  borg extract --list $REPO_VESTA::$LAST_BACKUP_ARCHIVE $BACKUP_VESTA_USER_DIR
+  $CURRENT_DIR/inc/borg_extract.sh $REPO_VESTA $LAST_BACKUP_ARCHIVE $BACKUP_VESTA_USER_DIR
   # Check that the files have been restored correctly
   if [ ! -d "$BACKUP_VESTA_USER_DIR" ]; then
     echo "!!!!! Vesta user config files for $USER are not present in backup archive $LAST_BACKUP_ARCHIVE."
@@ -115,7 +115,7 @@ do
   fi
 
   echo "-- Extracting last backup $USER_REPO::$LAST_BACKUP_ARCHIVE to temp dir"
-  borg extract --list $USER_REPO::$LAST_BACKUP_ARCHIVE $BACKUP_USER_DIR
+  $CURRENT_DIR/inc/borg_extract.sh $USER_REPO $LAST_BACKUP_ARCHIVE $BACKUP_USER_DIR
 
   # Check that the files have been restored correctly
   if [ ! -d "$BACKUP_USER_DIR" ]; then
@@ -129,12 +129,12 @@ do
 
   echo "-- Extracting last database backup $USER_DB_REPO::$LAST_BACKUP_ARCHIVE to temp dir"
 
-  DATABASE_ARCHIVES=$(borg list $USER_DB_REPO | grep "\-$LAST_BACKUP_ARCHIVE" | awk '{print $1}')
+  DATABASE_ARCHIVES=$($CURRENT_DIR/inc/borg_list.sh $USER_DB_REPO | awk '{print $1}' | grep "\-$LAST_BACKUP_ARCHIVE")
   mkdir -p $ARCHIVE_USER_DIR/$DB_DUMP_DIR_NAME
-  for DATABASE_ARCHIVE in "${DATABASE_ARCHIVES}"; do
+  for DATABASE_ARCHIVE in $DATABASE_ARCHIVES; do
     DATABASE_NAME=$(echo $DATABASE_ARCHIVE | sed -e "s/-$LAST_BACKUP_ARCHIVE//")
     echo "-- Extracting $DATABASE_ARCHIVE to $DB_DUMP_DIR_NAME/$DATABASE_NAME.sql.gz";
-    borg extract --stdout $USER_DB_REPO::$DATABASE_ARCHIVE | gzip > $ARCHIVE_USER_DIR/$DB_DUMP_DIR_NAME/$DATABASE_NAME.sql.gz
+    $CURRENT_DIR/inc/borg_extract_stdout.sh $USER_DB_REPO $DATABASE_ARCHIVE | gzip > $ARCHIVE_USER_DIR/$DB_DUMP_DIR_NAME/$DATABASE_NAME.sql.gz
   done
 
   echo "-- Moving user files from temp dir to $ARCHIVE_USER_DIR"
@@ -151,14 +151,10 @@ do
   fi
 
   echo "-- Removing user repo $USER_REPO from disk."
-  if [ -d "$USER_REPO" ]; then
-    rm -rf $USER_REPO
-  fi
+  $CURRENT_DIR/inc/delete_repo.sh $USER_REPO
 
   echo "-- Removing user database repo $USER_DB_REPO from disk."
-  if [ -d "$USER_DB_REPO" ]; then
-    rm -rf $USER_DB_REPO
-  fi
+  $CURRENT_DIR/inc/delete_repo.sh $USER_DB_REPO
 
   echo
 done
