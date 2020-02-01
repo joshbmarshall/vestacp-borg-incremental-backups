@@ -6,8 +6,8 @@ source $CURRENT_DIR/config.ini
 USAGE="restore-db.sh 2018-03-25 user database"
 
 # Assign arguments
-TIME=$1
-USER=$2
+VTIME=$1
+VUSER=$2
 DB=$3
 
 # Set script start time
@@ -18,7 +18,7 @@ TEMP_DIR=$CURRENT_DIR/tmp
 mkdir -p $TEMP_DIR
 
 # Set user repository
-USER_REPO=$REPO_DB_DIR/$USER
+USER_REPO=$REPO_DB_DIR/$VUSER
 
 ##### Validations #####
 
@@ -30,8 +30,8 @@ if [[ -z $1 || -z $2 || -z $3 ]]; then
   exit 1
 fi
 
-if [ ! -d "$HOME_DIR/$USER" ]; then
-  echo "!!!!! User $USER does not exist"
+if [ ! -d "$HOME_DIR/$VUSER" ]; then
+  echo "!!!!! User $VUSER does not exist"
   echo "---"
   echo "Available users:"
   ls $HOME_DIR
@@ -41,11 +41,11 @@ if [ ! -d "$HOME_DIR/$USER" ]; then
   exit 1
 fi
 
-if [[ $(v-list-databases $USER | grep -w '\(my\|pg\)sql' | cut -d " " -f1 | grep "$DB") != "$DB" ]]; then
+if [[ $(v-list-databases $VUSER | grep -w '\(my\|pg\)sql' | cut -d " " -f1 | grep "$DB") != "$DB" ]]; then
   echo "!!!!! Database $DB not found under selected user."
   echo "---"
-  echo "User $USER has the following databases:"
-  v-list-databases $USER | grep -w '\(my\|pg\)sql' | cut -d " " -f1
+  echo "User $VUSER has the following databases:"
+  v-list-databases $VUSER | grep -w '\(my\|pg\)sql' | cut -d " " -f1
   echo "---"
   echo "Usage example:"
   echo $USAGE
@@ -53,12 +53,12 @@ if [[ $(v-list-databases $USER | grep -w '\(my\|pg\)sql' | cut -d " " -f1 | grep
 fi
 
 if [ ! -d "$USER_REPO/data" ]; then
-  echo "!!!!! User $USER has no backup repository or no backup has been executed yet. Aborting..."
+  echo "!!!!! User $VUSER has no backup repository or no backup has been executed yet. Aborting..."
   exit 1
 fi
 
-if ! borg list $USER_REPO | grep -q "$DB-$TIME"; then
-  echo "!!!!! Backup archive $TIME not found, the following are available:"
+if ! borg list $USER_REPO | grep -q "$DB-$VTIME"; then
+  echo "!!!!! Backup archive $VTIME not found, the following are available:"
   borg list $USER_REPO | grep $DB
   echo "Usage example:"
   echo $USAGE
@@ -66,9 +66,9 @@ if ! borg list $USER_REPO | grep -q "$DB-$TIME"; then
 fi
 
 
-echo "########## BACKUP ARCHIVE $TIME FOUND, PROCEEDING WITH DATABASE RESTORE ##########"
+echo "########## BACKUP ARCHIVE $VTIME FOUND, PROCEEDING WITH DATABASE RESTORE ##########"
 echo
-read -p "Are you sure you want to restore database $DB owned by $USER with $TIME backup version? " -n 1 -r
+read -p "Are you sure you want to restore database $DB owned by $VUSER with $VTIME backup version? " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]
 then
@@ -78,9 +78,9 @@ then
   exit 1
 fi
 
-echo "-- Restoring database $DB from backup $USER_REPO::$TIME"
+echo "-- Restoring database $DB from backup $USER_REPO::$VTIME"
 
-if [[ $(v-list-databases $USER | grep -w mysql | cut -d " " -f1 | grep "$DB") == "$DB" ]]; then
+if [[ $(v-list-databases $VUSER | grep -w mysql | cut -d " " -f1 | grep "$DB") == "$DB" ]]; then
   echo "-- Removing database $DB"
   mysqladmin -f drop $DB
 
@@ -88,21 +88,22 @@ if [[ $(v-list-databases $USER | grep -w mysql | cut -d " " -f1 | grep "$DB") ==
   mysql -e "CREATE DATABASE IF NOT EXISTS $DB"
 
   echo "-- Importing $DB_FILE to $DB database"
-  borg extract --stdout $USER_REPO::$DB-$TIME | mysql $DB
+  borg extract --stdout $USER_REPO::$DB-$VTIME | mysql $DB
 fi
-if [[ $(v-list-databases $USER | grep -w pgsql | cut -d " " -f1 | grep "$DB") == "$DB" ]]; then
+if [[ $(v-list-databases $VUSER | grep -w pgsql | cut -d " " -f1 | grep "$DB") == "$DB" ]]; then
+  . $CURRENT_DIR/inc/pgsql-setup.sh
   echo "-- Removing database $DB"
-  echo "DROP DATABASE $DB" | psql -U postgres
+  echo "DROP DATABASE $DB" | psql -h localhost -U $USER
 
   echo "-- Creating database $DB"
-  echo "CREATE DATABASE $DB" | psql -U postgres
+  echo "CREATE DATABASE $DB" | psql -h localhost -U $USER
 
   echo "-- Importing $DB_FILE to $DB database"
-  borg extract --stdout $USER_REPO::$DB-$TIME | psql -U postgres $DB
+  borg extract --stdout $USER_REPO::$DB-$VTIME | psql -h localhost -U $USER $DB
 fi
 
 echo
-echo "$(date +'%F %T') ########## DATABASE $DB OWNED BY $USER RESTORE COMPLETED ##########"
+echo "$(date +'%F %T') ########## DATABASE $DB OWNED BY $VUSER RESTORE COMPLETED ##########"
 
 END_TIME=`date +%s`
 RUN_TIME=$((END_TIME-START_TIME))

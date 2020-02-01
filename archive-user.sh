@@ -6,16 +6,16 @@ source $CURRENT_DIR/config.ini
 USAGE="restore-user.sh user"
 
 # Assign arguments
-USER=$1
+VUSER=$1
 
 # Set script start time
 START_TIME=`date +%s`
 
 # Set dir paths
-USER_DIR=$HOME_DIR/$USER
-VESTA_USER_DIR=$VESTA_DIR/data/users/$USER
-ARCHIVE_USER_DIR=$ARCHIVE_DIR/$USER
-ARCHIVE_VESTA_USER_DIR=$ARCHIVE_USER_DIR/vesta/$USER
+USER_DIR=$HOME_DIR/$VUSER
+VESTA_USER_DIR=$VESTA_DIR/data/users/$VUSER
+ARCHIVE_USER_DIR=$ARCHIVE_DIR/$VUSER
+ARCHIVE_VESTA_USER_DIR=$ARCHIVE_USER_DIR/vesta/$VUSER
 
 ##### Validations #####
 
@@ -29,13 +29,13 @@ fi
 
 # Check if user archive exist
 if [ ! -d "$USER_DIR" ]; then
-  echo "!!!!! User $USER does not exist in the system. Aborting..."
+  echo "!!!!! User $VUSER does not exist in the system. Aborting..."
   exit 1
 fi
 
 # Check if user exist in vesta dir
 if [ ! -d "$VESTA_USER_DIR" ]; then
-  echo "!!!!! User $USER doest not exist in vesta directory."
+  echo "!!!!! User $VUSER doest not exist in vesta directory."
   exit 1
 fi
 
@@ -66,11 +66,11 @@ if [ -d "$ARCHIVE_USER_DIR" ]; then
   fi
 fi
 
-echo "########## USER $USER FOUND, PROCEEDING WITH ARCHIVE ##########"
+echo "########## USER $VUSER FOUND, PROCEEDING WITH ARCHIVE ##########"
 
 echo "-- Dumping databases to user dir"
 # Create dir where the user databases will be stored
-DESTINATION=$HOME_DIR/$USER/$DB_DUMP_DIR_NAME
+DESTINATION=$HOME_DIR/$VUSER/$DB_DUMP_DIR_NAME
 mkdir -p $DESTINATION
 # Clean destination
 rm -f $DESTINATION/*
@@ -78,15 +78,16 @@ while read DATABASE ; do
   mysqldump $DATABASE --opt --routines | gzip > $DESTINATION/$DATABASE.sql.gz
   echo "$(date +'%F %T') -- $DATABASE > $DESTINATION/$DATABASE.sql.gz"
   # Fix permissions
-  chown -R $USER:$USER $DESTINATION
-done < <(v-list-databases $USER | grep -w mysql | cut -d " " -f1)
+  chown -R $VUSER:$VUSER $DESTINATION
+done < <(v-list-databases $VUSER | grep -w mysql | cut -d " " -f1)
 
 while read DATABASE ; do
-  pg_dump -U postgres $DATABASE | gzip > $DESTINATION/$DATABASE.sql.gz
+  . $CURRENT_DIR/inc/pgsql-setup.sh
+  pg_dump -h localhost -U $USER $DATABASE | gzip > $DESTINATION/$DATABASE.sql.gz
   echo "$(date +'%F %T') -- $DATABASE > $DESTINATION/$DATABASE.sql.gz"
   # Fix permissions
-  chown -R $USER:$USER $DESTINATION
-done < <(v-list-databases $USER | grep -w pgsql | cut -d " " -f1)
+  chown -R $VUSER:$VUSER $DESTINATION
+done < <(v-list-databases $VUSER | grep -w pgsql | cut -d " " -f1)
 
 echo "-- Creating user archive directory $ARCHIVE_USER_DIR"
 # First remove archive dir and file if exist
@@ -101,7 +102,7 @@ fi
 mkdir -p $ARCHIVE_USER_DIR
 mkdir -p $ARCHIVE_VESTA_USER_DIR
 
-echo "-- Saving vesta config files for user $USER from $VESTA_USER_DIR to $ARCHIVE_VESTA_USER_DIR"
+echo "-- Saving vesta config files for user $VUSER from $VESTA_USER_DIR to $ARCHIVE_VESTA_USER_DIR"
 rsync -za $VESTA_USER_DIR/ $ARCHIVE_VESTA_USER_DIR/
 
 echo "-- Saving user files from $USER_DIR to $ARCHIVE_USER_DIR"
@@ -109,7 +110,7 @@ rsync -za $USER_DIR/ $ARCHIVE_USER_DIR/
 
 echo "-- Compressing $ARCHIVE_USER_DIR into $ARCHIVE_USER_DIR.tar.gz"
 cd $ARCHIVE_DIR
-tar -pczf $USER.tar.gz $USER
+tar -pczf $VUSER.tar.gz $VUSER
 
 # Clean archive dir
 if [ -d "$ARCHIVE_USER_DIR" ]; then
@@ -117,7 +118,7 @@ if [ -d "$ARCHIVE_USER_DIR" ]; then
 fi
 
 echo
-echo "$(date +'%F %T') #################### USER $USER ARCHIVED INTO $ARCHIVE_USER_DIR.tar.gz ####################"
+echo "$(date +'%F %T') #################### USER $VUSER ARCHIVED INTO $ARCHIVE_USER_DIR.tar.gz ####################"
 
 END_TIME=`date +%s`
 RUN_TIME=$((END_TIME-START_TIME))
